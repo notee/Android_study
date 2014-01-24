@@ -1,6 +1,7 @@
 package com.example.chat;
 
 import com.example.chat.Datebase.DBOpenHelper;
+import com.example.chat.Datebase.DBRecord;
 
 import android.os.Bundle;
 import android.app.Activity;
@@ -16,6 +17,8 @@ import android.widget.TextView;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.ArrayAdapter;
+
+import com.google.gson.*;
 
 //import com.example.chat.DBOpenHelper;
 
@@ -34,7 +37,8 @@ public class MainActivity extends Activity {
     ArrayAdapter<String> adapter_to_body = null;
     DBOpenHelper dbOpenHelper = null;
 
-    //オブジェクトのイベントリスナー
+
+    //objectsのイベントリスナー
     Button.OnClickListener b_connect_listener = new Button.OnClickListener() {
         public void onClick(View v){
             Log.d( "Button", "かわしたやーくそくーわすれーないよー" );
@@ -104,6 +108,7 @@ public class MainActivity extends Activity {
         //データベースオープン, これでDBOpenHelperに書かれたDBがオープンする。
         dbOpenHelper	= new DBOpenHelper(this);
 
+        reload();
         Log.d("chaaaaaaaaaaaaaaaaaaaat","activity loaded");
 
     }
@@ -118,31 +123,26 @@ public class MainActivity extends Activity {
 
     //ここから自由に作る
     public boolean post(String comment){
-        //adapter_to_body.insert( comment, 0 );
-    	Log.d("DB","post");
+        Log.d("DB","post");
 
-        
         //登録用のレコード作成
-        ContentValues record = new ContentValues();
-        record.put("comment", comment);
-        record.put("user_name", "nanashi");
-        record.put("posted_at", System.currentTimeMillis());
+        DBRecord record = new DBRecord(comment, "nanashi", System.currentTimeMillis());
 
         //DBオープン
         SQLiteDatabase db   = dbOpenHelper.getWritableDatabase();
 
-        if(db.insert("timeline", null, record) != 0){
+        if(db.insert("timeline", null, record.toContentValues()) != 0){
             return true;
         }
-        
+
         return false;
     }
 
-    
-    public boolean reload(){
-    	Log.d("DB","reload");
 
-    	//DBオープン
+    public boolean reload(){
+        Log.d("DB","reload");
+
+        //DBオープン
         SQLiteDatabase db   = dbOpenHelper.getReadableDatabase();
 
         Cursor records = db.query(
@@ -155,19 +155,19 @@ public class MainActivity extends Activity {
                             "posted_at desc", //orderby
                             "5" //limit
                         );
-        
+
         Log.d("query", "select has done");
         //ListView更新処理
         if(records.moveToFirst()){
             adapter_to_body.clear();
             boolean record_exists = true;
             while (record_exists){
-            	adapter_to_body.add(records.getString(1) + " : " + records.getString(0));
+                adapter_to_body.add(records.getString(1) + " : " + records.getString(0));
                 record_exists = records.moveToNext(); //次の行あれば移動
             }
             return true;
         }
-        
+
         return false;
     }
 
