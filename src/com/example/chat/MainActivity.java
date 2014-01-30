@@ -1,24 +1,27 @@
 package com.example.chat;
 
-import com.example.chat.Datebase.DBOpenHelper;
-import com.example.chat.Datebase.DBRecord;
+import java.util.List;
 
-import android.os.Bundle;
+import org.json.JSONArray;
+
+import android.R.integer;
 import android.app.Activity;
-import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.view.Menu;
+import android.os.Bundle;
 import android.util.Log;
+import android.view.Menu;
 import android.view.View;
-import android.view.View.OnClickListener;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.TextView;
 import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.ArrayAdapter;
 
-import com.google.gson.*;
+import com.example.chat.Datebase.DBOpenHelper;
+import com.example.chat.Datebase.DBRecord;
+//import com.google.gson.*;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 //import com.example.chat.DBOpenHelper;
 
@@ -128,6 +131,11 @@ public class MainActivity extends Activity {
         //登録用のレコード作成
         DBRecord record = new DBRecord(comment, "nanashi", System.currentTimeMillis());
 
+        //JSONにして飛ばします
+        Log.d("gsontest", new Gson().toJson(record, record.getClass()));
+        //sendJson();
+
+
         //DBオープン
         SQLiteDatabase db   = dbOpenHelper.getWritableDatabase();
 
@@ -140,11 +148,50 @@ public class MainActivity extends Activity {
 
 
     public boolean reload(){
-        Log.d("DB","reload");
+
+        int _GET_NUM 	= 5;
+        int _INF 		= -1; //GET_NUMより十分大きな値
+
+        //サーバからレコードを10件取得
+        //getJSON(_GET_NUM);
+        String JSONRecords = "[{\"comment\":\"はわわわ\",\"user_name\":\"nanashi\",\"posted_at\":1390810429863}, "
+                            + "{\"comment\":\"にゃあ\",\"user_name\":\"nanashi\",\"posted_at\":1390810429870}, "
+                            + "{\"comment\":\"くまー\",\"user_name\":\"nanashi\",\"posted_at\":1390810429871}, "
+                            + "{\"comment\":\"っぽい\",\"user_name\":\"nanashi\",\"posted_at\":1390810429876}, "
+                            + "{\"comment\":\"ぱんぱかぱーん\",\"user_name\":\"nanashi\",\"posted_at\":1390810429879}, "
+                            + "{\"comment\":\"なのです！\",\"user_name\":\"nanashi\",\"posted_at\":1390810429882}]";
+
+
+        //取得レコードをrecord型配列にパース
+        List<DBRecord> saveRecords = new Gson().fromJson(JSONRecords, new TypeToken<List<DBRecord>>(){}.getType());
 
         //DBオープン
         SQLiteDatabase db   = dbOpenHelper.getReadableDatabase();
 
+        //DBに書き込み
+        Log.d("DB","save");
+
+        db.beginTransaction();
+        try{
+
+            //取得したRecordsをbulk insertでDBに保存
+            for (DBRecord elem_record : saveRecords) {
+                db.insert("timeline", null, elem_record.toContentValues());
+            }
+
+            //余分なデータ消します
+            String deleteSQL = "delete from timeline where posted_at in ( select posted_at from timeline order by posted_at desc limit ? offset ? )";
+            Object[] bind = new Object[]{_INF, _GET_NUM};
+            db.execSQL(deleteSQL, bind);
+
+            db.setTransactionSuccessful();
+        }finally{
+            db.endTransaction();
+        }
+
+
+        //DBから読み出し
+        Log.d("DB","load");
         Cursor records = db.query(
                             "timeline", //from
                             new String[] {"comment", "user_name", "posted_at"}, //cols
@@ -170,5 +217,4 @@ public class MainActivity extends Activity {
 
         return false;
     }
-
 }
